@@ -13,6 +13,25 @@ data class ChessPosition(
 )
 
 object ChessReplay {
+    fun applySan(fen: String, san: String): ChessPosition {
+        val board = Board()
+        board.loadFromFen(fen)
+        val whiteMoved = board.sideToMove == com.github.bhlangonijr.chesslib.Side.WHITE
+        val moveList = MoveList(fen)
+        moveList.addSanMove(san, true, true)
+        val move = moveList.firstOrNull() ?: throw IllegalArgumentException("Не удалось распознать ход $san")
+        if (!board.doMove(move, true)) throw IllegalArgumentException("Недопустимый ход $san")
+        val fullMoveNumber = fen.split(" ").getOrNull(5)?.toIntOrNull() ?: 1
+        return ChessPosition(
+            ply = 1,
+            fen = board.fen,
+            lastSan = san,
+            playedUci = move.toString(),
+            moveNumber = fullMoveNumber,
+            whiteMoved = whiteMoved
+        )
+    }
+
     fun build(game: PgnGame): List<ChessPosition> {
         val board = Board()
         val positions = mutableListOf(ChessPosition(ply = 0, fen = board.fen))
