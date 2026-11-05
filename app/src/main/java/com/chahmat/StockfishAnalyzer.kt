@@ -98,8 +98,11 @@ object StockfishAnalyzer {
             } else {
                 (beforeEval.scoreCp + afterEval.scoreCp).coerceAtLeast(0)
             }
+            val bestSan = toSan(positions[index].fen, beforeEval.bestMoveUci)
+            val playedSan = after.lastSan ?: "?"
             val verdict = when {
                 loss < 35 -> "Нормальный ход"
+                bestSan.contains('x') && !playedSan.contains('x') -> "Упущено взятие"
                 loss < 90 -> "Неточность"
                 loss < 180 -> "Ошибка"
                 else -> "Грубая ошибка"
@@ -108,8 +111,8 @@ object StockfishAnalyzer {
                 ply = after.ply,
                 moveNumber = after.moveNumber,
                 side = if (after.whiteMoved) "Белые" else "Чёрные",
-                playedSan = after.lastSan ?: "?",
-                bestSan = toSan(positions[index].fen, beforeEval.bestMoveUci),
+                playedSan = playedSan,
+                bestSan = bestSan,
                 lossCp = loss,
                 verdict = verdict
             )
