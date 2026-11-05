@@ -6,9 +6,12 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -20,9 +23,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private data class MoveComparison(val before: ChessPosition, val actual: ChessPosition, val best: ChessPosition, val review: MoveReview)
 
 private data class ReviewItem(val move: String, val label: String, val explanation: String, val alternative: String)
 
@@ -44,6 +50,8 @@ private fun ChahmatApp() {
     var moveReviews by remember { mutableStateOf<List<MoveReview>>(emptyList()) }
     var analysisStatus by remember { mutableStateOf("") }
     var isAnalyzing by remember { mutableStateOf(false) }
+    var comparison by remember { mutableStateOf<MoveComparison?>(null) }
+    var comparisonPhase by remember { mutableIntStateOf(1) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -142,6 +150,22 @@ private fun ChahmatApp() {
                         }
                     },
                     onOpenDemo = { importedGame = null; positions = emptyList(); currentPly = 0 },
+                    comparison = comparison,
+                    comparisonPhase = comparisonPhase,
+                    onComparisonPhaseChange = { comparisonPhase = it },
+                    onShowComparison = { review ->
+                        val before = positions.getOrNull(review.ply - 1)
+                        val actual = positions.getOrNull(review.ply)
+                        if (before != null && actual != null) {
+                            try {
+                                val best = ChessReplay.applySan(before.fen, review.bestSan)
+                                comparison = MoveComparison(before, actual, best, review)
+                                comparisonPhase = 1
+                            } catch (error: Exception) {
+                                Toast.makeText(context, "Не удалось построить лучший вариант: ${error.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    },
                     demoItems = examples,
                     modifier = Modifier.padding(padding)
                 )
@@ -185,6 +209,10 @@ private fun ReviewScreen(
     onReviewGame: () -> Unit,
     onOpenDemo: () -> Unit,
     demoItems: List<ReviewItem>,
+    comparison: MoveComparison?,
+    comparisonPhase: Int,
+    onComparisonPhaseChange: (Int) -> Unit,
+    onShowComparison: (MoveReview) -> Unit,
     modifier: Modifier = Modifier
 ) {
     if (game == null || positions.isEmpty()) {
@@ -220,6 +248,33 @@ private fun ReviewScreen(
             Text(game.event, style = MaterialTheme.typography.headlineSmall)
             Text("${game.white} — ${game.black} · ${game.result}", style = MaterialTheme.typography.bodyMedium)
             ChessBoard(position.fen)
+            if (comparison != null) {
+                Card {
+                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("♞ Как ты сыграл → как лучше", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            if (comparisonPhase == 1) "Твой ход: ${comparison.review.playedSan}"
+                            else "Лучший ход Stockfish: ${comparison.review.bestSan}",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        AnimatedChessBoard(
+                            fromFen = comparison.before.fen,
+                            toFen = if (comparisonPhase == 1) comparison.actual.fen else comparison.best.fen,
+                            uci = if (comparisonPhase == 1) comparison.actual.playedUci else comparison.best.playedUci,
+                            animationKey = comparisonPhase
+                        )
+                        Text(
+                            if (comparisonPhase == 1) "Так партия пошла на самом деле."
+                            else "Так можно было сыграть вместо этого хода.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { onComparisonPhaseChange(1) }, modifier = Modifier.weight(1f)) { Text("Как было") }
+                            Button(onClick = { onComparisonPhaseChange(2) }, modifier = Modifier.weight(1f)) { Text("Как лучше") }
+                        }
+                    }
+                }
+            }
             Text(moveLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 OutlinedButton(onClick = { onPlyChange(0) }, enabled = safePly > 0) { Text("В начало") }
@@ -260,6 +315,7 @@ private fun ReviewScreen(
                         Text(review.verdict, color = if (review.lossCp >= 90) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                         Text("Лучше: ${review.bestSan} · потеря оценки примерно ${formatScore(review.lossCp)}")
                         Text("Нажмите, чтобы открыть эту позицию", style = MaterialTheme.typography.bodySmall)
+                        OutlinedButton(onClick = { onShowComparison(review) }) { Text("▶ Показать: как было / как лучше") }
                     }
                 }
             }
@@ -282,6 +338,57 @@ private fun ReviewScreen(
         item {
             OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Открыть другой PGN") }
             Text("Stockfish анализирует партии после их завершения. Во время рейтинговой игры подсказки не показываются.", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+
+@Composable
+private fun AnimatedChessBoard(fromFen: String, toFen: String, uci: String?, animationKey: Int) {
+    val progress = remember(animationKey) { Animatable(0f) }
+    LaunchedEffect(animationKey) {
+        progress.snapTo(0f)
+        progress.animateTo(1f, animationSpec = tween(durationMillis = 700))
+    }
+    val targetRows = remember(toFen) { parseFenBoard(toFen) }
+    val sourceRows = remember(fromFen) { parseFenBoard(fromFen) }
+    val fromCol = uci?.getOrNull(0)?.minus('a')?.coerceIn(0, 7) ?: -1
+    val fromRow = uci?.getOrNull(1)?.digitToIntOrNull()?.let { 8 - it } ?: -1
+    val toCol = uci?.getOrNull(2)?.minus('a')?.coerceIn(0, 7) ?: -1
+    val toRow = uci?.getOrNull(3)?.digitToIntOrNull()?.let { 8 - it } ?: -1
+    val movingPiece = if (fromRow in 0..7 && fromCol in 0..7) sourceRows[fromRow][fromCol] else null
+    BoxWithConstraints(Modifier.fillMaxWidth().aspectRatio(1f)) {
+        val cellPx = with(androidx.compose.ui.platform.LocalDensity.current) { (maxWidth / 8).toPx() }
+        Column(Modifier.fillMaxSize()) {
+            targetRows.forEachIndexed { rowIndex, row ->
+                Row(Modifier.weight(1f)) {
+                    row.forEachIndexed { colIndex, piece ->
+                        val isDestination = rowIndex == toRow && colIndex == toCol && movingPiece != null
+                        val light = (rowIndex + colIndex) % 2 == 0
+                        Box(
+                            Modifier.weight(1f).fillMaxHeight()
+                                .background(if (light) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.secondaryContainer),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(if (isDestination) "" else piece?.let { pieceGlyph(it) } ?: "", fontSize = 27.sp)
+                        }
+                    }
+                }
+            }
+        }
+        if (movingPiece != null && fromRow in 0..7 && toRow in 0..7 && fromCol in 0..7 && toCol in 0..7) {
+            val p = progress.value
+            Box(
+                Modifier.offset {
+                    IntOffset(
+                        ((fromCol + (toCol - fromCol) * p) * cellPx).roundToInt(),
+                        ((fromRow + (toRow - fromRow) * p) * cellPx).roundToInt()
+                    )
+                }.size(maxWidth / 8),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(pieceGlyph(movingPiece), fontSize = 27.sp)
+            }
         }
     }
 }
