@@ -27,36 +27,11 @@ object PgnParser {
         val san = mutableListOf<String>()
         for (raw in body.split(Regex("""\s+""")).filter { it.isNotBlank() }) {
             var token = raw
-            if (token.startsWith(') continue
+            if (token.startsWith('$')) continue
             token = token.replace(Regex("""^\d+\.{1,3}"""), "")
             if (token.isBlank()) continue
             if (token in setOf("1-0", "0-1", "1/2-1/2", "*")) break
-            if (token.startsWith("$") || token == "e.p." || token == "ep") continue
-            san += token
-        }
-
-        val moves = mutableListOf<PgnMove>()
-        var i = 0
-        var moveNumber = 1
-        while (i < san.size) {
-            val whiteMove = san[i++]
-            val blackMove = if (i < san.size) san[i++] else null
-            moves += PgnMove(moveNumber++, whiteMove, blackMove)
-        }
-        return PgnGame(
-            event = tags["Event"] ?: "Партия из PGN",
-            white = tags["White"] ?: "Белые",
-            black = tags["Black"] ?: "Чёрные",
-            result = tags["Result"] ?: "*",
-            moves = moves
-        )
-    }
-}
-)) continue
-            token = token.replace(Regex("""^\d+\.{1,3}"""), "")
-            if (token.isBlank()) continue
-            if (token in setOf("1-0", "0-1", "1/2-1/2", "*")) break
-            if (token.startsWith("$") || token == "e.p." || token == "ep") continue
+            if (token.startsWith('$') || token == "e.p." || token == "ep") continue
             san += token
         }
 
