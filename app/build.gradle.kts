@@ -5,7 +5,7 @@ plugins {
 }
 android {
     namespace = "com.chahmat"
-    compileSdk = 37
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.chahmat"
         minSdk = 26
