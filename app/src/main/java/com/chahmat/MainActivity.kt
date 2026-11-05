@@ -55,24 +55,36 @@ private fun ChahmatApp() {
     var comparisonPhase by remember { mutableIntStateOf(1) }
     var hintDialogOpen by remember { mutableStateOf(false) }
     var hintLevel by remember { mutableIntStateOf(0) }
+    var pasteDialogOpen by remember { mutableStateOf(false) }
+    var pastedPgn by remember { mutableStateOf("") }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    fun importPgn(source: String) {
+        try {
+            val parsed = PgnParser.parse(source)
+            val replay = ChessReplay.build(parsed)
+            if (replay.size < 2) error("В тексте не найдены ходы партии")
+            importedGame = parsed
+            positions = replay
+            currentPly = 0
+            bestLines = emptyList()
+            moveReviews = emptyList()
+            analysisStatus = "Партия загружена. Можно проверять ходы."
+            selectedTab = 1
+            pasteDialogOpen = false
+            pastedPgn = ""
+        } catch (error: Exception) {
+            Toast.makeText(context, error.localizedMessage ?: "Не удалось прочитать PGN", Toast.LENGTH_LONG).show()
+        }
+    }
 
     val pgnPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             try {
                 val text = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
                     ?: error("Не удалось открыть файл")
-                val parsed = PgnParser.parse(text)
-                val replay = ChessReplay.build(parsed)
-                if (replay.size < 2) error("В файле не найдены ходы партии")
-                importedGame = parsed
-                positions = replay
-                currentPly = 0
-                bestLines = emptyList()
-                moveReviews = emptyList()
-                analysisStatus = "Партия загружена. Можно проверять ходы."
-                selectedTab = 1
+                importPgn(text)
             } catch (error: Exception) {
                 Toast.makeText(context, error.localizedMessage ?: "Не удалось прочитать PGN", Toast.LENGTH_LONG).show()
             }
@@ -120,6 +132,12 @@ private fun ChahmatApp() {
                         bestLines = emptyList()
                     },
                     onImport = { pgnPicker.launch(arrayOf("*/*")) },
+                    onOpenPaste = { pasteDialogOpen = true },
+                    onPastePgn = { importPgn(it) },
+                    pasteDialogOpen = pasteDialogOpen,
+                    pastedPgn = pastedPgn,
+                    onPastedPgnChange = { pastedPgn = it },
+                    onClosePaste = { pasteDialogOpen = false },
                     onBestMoves = {
                         val position = positions.getOrNull(currentPly)
                         if (position != null) scope.launch {
@@ -227,6 +245,12 @@ private fun ReviewScreen(
     isAnalyzing: Boolean,
     onPlyChange: (Int) -> Unit,
     onImport: () -> Unit,
+    onOpenPaste: () -> Unit,
+    onPastePgn: (String) -> Unit,
+    pasteDialogOpen: Boolean,
+    pastedPgn: String,
+    onPastedPgnChange: (String) -> Unit,
+    onClosePaste: () -> Unit,
     onBestMoves: () -> Unit,
     onReviewGame: () -> Unit,
     onOpenDemo: () -> Unit,
@@ -238,6 +262,31 @@ private fun ReviewScreen(
     onShowComparison: (MoveReview) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (pasteDialogOpen) {
+        AlertDialog(
+            onDismissRequest = onClosePaste,
+            title = { Text("Вставить PGN") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Скопируй запись партии с Chess.com и вставь её сюда целиком.")
+                    OutlinedTextField(
+                        value = pastedPgn,
+                        onValueChange = onPastedPgnChange,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 150.dp, max = 300.dp),
+                        placeholder = { Text("[Event ...]\\n1. e4 e5 ...") },
+                        minLines = 6,
+                        maxLines = 12
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { onPastePgn(pastedPgn) }, enabled = pastedPgn.isNotBlank()) {
+                    Text("Загрузить партию")
+                }
+            },
+            dismissButton = { TextButton(onClick = onClosePaste) { Text("Отмена") } }
+        )
+    }
     if (hintDialogOpen) {
         val hints = listOf(
             "Не спеши ходить. Сначала проверь, какие фигуры сейчас атакованы и не оставлены ли они без защиты.",
@@ -271,7 +320,8 @@ private fun ReviewScreen(
             item {
                 Text("Разбор партии", style = MaterialTheme.typography.headlineSmall)
                 Text("Импортируйте PGN. Приложение проверит легальность каждого хода, а Stockfish найдёт сильные продолжения.")
-                Button(onClick = onImport) { Text("Импортировать PGN") }
+                Button(onClick = onOpenPaste, modifier = Modifier.fillMaxWidth()) { Text("Вставить PGN") }
+                OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Открыть файл PGN") }
                 Text("Пример интерфейса", style = MaterialTheme.typography.titleMedium)
             }
             items(demoItems) { item -> ReviewCard(item) }
@@ -386,7 +436,8 @@ private fun ReviewScreen(
             }
         }
         item {
-            OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Открыть другой PGN") }
+            Button(onClick = onOpenPaste, modifier = Modifier.fillMaxWidth()) { Text("Вставить другой PGN") }
+            OutlinedButton(onClick = onImport, modifier = Modifier.fillMaxWidth()) { Text("Открыть файл PGN") }
             Text("Stockfish анализирует партии после их завершения. Во время рейтинговой игры подсказки не показываются.", style = MaterialTheme.typography.bodySmall)
         }
     }
