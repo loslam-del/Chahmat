@@ -25,5 +25,6 @@ dependencies {
     implementation("io.github.cvb941:kchesslib:1.0.5")
     implementation("fr.axl-lvy:stockfish-multiplatform-lite:0.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
+    testImplementation("junit:junit:4.13.2")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
