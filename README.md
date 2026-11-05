@@ -1,16 +1,23 @@
 # Chahmat — Chess Coach
 
-Android chess companion with a compact floating match panel and post-game analysis.
+Android chess companion with a compact floating match panel and post-game review.
 
-## Planned MVP
-- Import PGN and review games move by move
-- Detect missed captures, blunders, and stronger alternatives
-- Compact overlay for clocks and move notes
-- No engine move hints during rated live games; engine analysis is for post-game review
+## Current MVP
+- Kotlin + Jetpack Compose Android app
+- Import a PGN file from the device
+- Read player/event headers and SAN move notation
+- Step through moves with Previous / Next and jump from the move list
+- Compact panel concept for clocks and notes
 
-## Tech
-- Kotlin + Jetpack Compose
-- Android overlay permission for the optional floating panel
-- Stockfish integration planned for post-game analysis
+## Planned
+- Replay legal positions on a chessboard
+- Stockfish post-game analysis: missed captures, mistakes, and stronger alternatives
+- Android floating overlay with drag/minimize behavior
 
-See `docs/ROADMAP.md` for implementation stages.
+## Fair play
+Engine recommendations are intended for post-game analysis, not use during rated live games.
+
+## Build
+Open this repository in Android Studio and sync the Gradle project. The app currently targets Android 8.0+ (API 26) and compile SDK 35.
+
+See docs/ROADMAP.md for implementation stages.
