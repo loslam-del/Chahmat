@@ -31,7 +31,7 @@ object PgnParser {
             token = token.replace(Regex("""^\d+\.{1,3}"""), "")
             if (token.isBlank()) continue
             if (token in setOf("1-0", "0-1", "1/2-1/2", "*")) break
-            if (token.startsWith("$")) continue
+            if (token.startsWith("$") || token == "e.p." || token == "ep") continue
             san += token
         }
 
