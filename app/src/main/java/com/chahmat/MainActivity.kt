@@ -351,11 +351,10 @@ private fun ReviewScreen(
                 Button(onClick = onPlayComparison, modifier = Modifier.fillMaxWidth()) {
                     Text("▶ Авто: показать оба варианта")
                 }
-                AnimatedChessBoard(
-                    fromFen = comparison.before.fen,
-                    toFen = if (comparisonPhase == 2) comparison.best.fen else comparison.actual.fen,
-                    uci = if (comparisonPhase == 2) comparison.best.playedUci else comparison.actual.playedUci,
-                    animationKey = comparisonPhase
+                // Render the selected final position directly so the board always
+                // changes even if the move animation cannot resolve a special move.
+                ChessBoard(
+                    if (comparisonPhase == 2) comparison.best.fen else comparison.actual.fen
                 )
                 Text(
                     if (comparisonPhase == 2) "Лучший ход: ${comparison.review.bestSan}" else "Сыграно в партии: ${comparison.review.playedSan}",
