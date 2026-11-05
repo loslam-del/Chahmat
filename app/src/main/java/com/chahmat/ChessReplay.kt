@@ -24,7 +24,7 @@ object ChessReplay {
                 val beforeFen = board.fen
                 try {
                     val moveList = MoveList(beforeFen)
-                    moveList.addSanMove(san, false, true)
+                    moveList.addSanMove(san, true, true)
                     val move = moveList.firstOrNull()
                         ?: throw IllegalArgumentException("Не удалось распознать ход $san")
                     if (!board.doMove(move, true)) {
