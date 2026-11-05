@@ -18,7 +18,7 @@ object PgnParser {
         var body = source.lineSequence()
             .filterNot { line -> line.trim().startsWith("[") && line.trim().endsWith("]") }
             .joinToString("\n")
-        body = body.replace(Regex("""\{[^}]*}"""), " ")
+        body = body.replace(Regex("""\{[^}]*\}"""), " ")
         body = body.replace(Regex(""";[^\r\n]*"""), " ")
         repeat(20) {
             val cleaned = body.replace(Regex("""\([^()]*\)"""), " ")
