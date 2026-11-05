@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 
 private data class MoveComparison(val before: ChessPosition, val actual: ChessPosition, val best: ChessPosition, val review: MoveReview)
@@ -153,6 +154,15 @@ private fun ChahmatApp() {
                     comparison = comparison,
                     comparisonPhase = comparisonPhase,
                     onComparisonPhaseChange = { comparisonPhase = it },
+                    onPlayComparison = {
+                        scope.launch {
+                            comparisonPhase = 0
+                            delay(100)
+                            comparisonPhase = 1
+                            delay(950)
+                            comparisonPhase = 2
+                        }
+                    },
                     onShowComparison = { review ->
                         val before = positions.getOrNull(review.ply - 1)
                         val actual = positions.getOrNull(review.ply)
@@ -212,6 +222,7 @@ private fun ReviewScreen(
     comparison: MoveComparison?,
     comparisonPhase: Int,
     onComparisonPhaseChange: (Int) -> Unit,
+    onPlayComparison: () -> Unit,
     onShowComparison: (MoveReview) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -253,21 +264,24 @@ private fun ReviewScreen(
                     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("♞ Как ты сыграл → как лучше", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            if (comparisonPhase == 1) "Твой ход: ${comparison.review.playedSan}"
+                            if (comparisonPhase == 2) "Лучший ход Stockfish: ${comparison.review.bestSan}"
                             else "Лучший ход Stockfish: ${comparison.review.bestSan}",
                             fontWeight = FontWeight.SemiBold
                         )
                         AnimatedChessBoard(
                             fromFen = comparison.before.fen,
-                            toFen = if (comparisonPhase == 1) comparison.actual.fen else comparison.best.fen,
-                            uci = if (comparisonPhase == 1) comparison.actual.playedUci else comparison.best.playedUci,
+                            toFen = if (comparisonPhase == 2) comparison.best.fen else comparison.actual.fen,
+                            uci = if (comparisonPhase == 2) comparison.best.playedUci else comparison.actual.playedUci,
                             animationKey = comparisonPhase
                         )
                         Text(
-                            if (comparisonPhase == 1) "Так партия пошла на самом деле."
+                            if (comparisonPhase != 2) "Так партия пошла на самом деле."
                             else "Так можно было сыграть вместо этого хода.",
                             style = MaterialTheme.typography.bodySmall
                         )
+                        Button(onClick = onPlayComparison, modifier = Modifier.fillMaxWidth()) {
+                            Text("▶ Сравнить автоматически")
+                        }
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(onClick = { onComparisonPhaseChange(1) }, modifier = Modifier.weight(1f)) { Text("Как было") }
                             Button(onClick = { onComparisonPhaseChange(2) }, modifier = Modifier.weight(1f)) { Text("Как лучше") }
