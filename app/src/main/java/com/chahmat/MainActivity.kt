@@ -105,8 +105,8 @@ private fun ChahmatApp() {
                     },
                     onImport = { pgnPicker.launch(arrayOf("*/*")) },
                     onBestMoves = {
-                        val position = positions.getOrNull(currentPly) ?: return@ReviewScreen
-                        scope.launch {
+                        val position = positions.getOrNull(currentPly)
+                        if (position != null) scope.launch {
                             isAnalyzing = true
                             analysisStatus = "Stockfish ищет лучшие варианты…"
                             try {
@@ -122,8 +122,7 @@ private fun ChahmatApp() {
                         }
                     },
                     onReviewGame = {
-                        if (positions.size < 2) return@ReviewScreen
-                        scope.launch {
+                        if (positions.size >= 2) scope.launch {
                             isAnalyzing = true
                             moveReviews = emptyList()
                             bestLines = emptyList()
