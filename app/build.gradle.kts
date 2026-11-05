@@ -23,7 +23,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("io.github.cvb941:kchesslib:1.0.5")
-    implementation("fr.axl-lvy:stockfish-multiplatform-lite:0.1.2")
+    implementation("fr.axl-lvy:stockfish-multiplatform-lite:0.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
