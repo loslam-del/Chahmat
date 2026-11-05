@@ -53,6 +53,8 @@ private fun ChahmatApp() {
     var isAnalyzing by remember { mutableStateOf(false) }
     var comparison by remember { mutableStateOf<MoveComparison?>(null) }
     var comparisonPhase by remember { mutableIntStateOf(1) }
+    var hintDialogOpen by remember { mutableStateOf(false) }
+    var hintLevel by remember { mutableIntStateOf(0) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -106,6 +108,11 @@ private fun ChahmatApp() {
                     currentPly = currentPly,
                     bestLines = bestLines,
                     moveReviews = moveReviews,
+                    hintDialogOpen = hintDialogOpen,
+                    hintLevel = hintLevel,
+                    onHints = { hintLevel = 0; hintDialogOpen = true },
+                    onHintLevelChange = { hintLevel = it },
+                    onHintDialogClose = { hintDialogOpen = false },
                     analysisStatus = analysisStatus,
                     isAnalyzing = isAnalyzing,
                     onPlyChange = {
@@ -211,6 +218,11 @@ private fun ReviewScreen(
     currentPly: Int,
     bestLines: List<BestLine>,
     moveReviews: List<MoveReview>,
+    hintDialogOpen: Boolean,
+    hintLevel: Int,
+    onHints: () -> Unit,
+    onHintLevelChange: (Int) -> Unit,
+    onHintDialogClose: () -> Unit,
     analysisStatus: String,
     isAnalyzing: Boolean,
     onPlyChange: (Int) -> Unit,
@@ -226,6 +238,30 @@ private fun ReviewScreen(
     onShowComparison: (MoveReview) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (hintDialogOpen) {
+        val hints = listOf(
+            "Не спеши ходить. Сначала проверь, какие фигуры сейчас атакованы и не оставлены ли они без защиты.",
+            "Посмотри на центр и на фигуры соперника: есть ли возможность создать угрозу, улучшить активность фигуры или защитить слабое место?",
+            "Проверь кандидаты по очереди: шахи, взятия и прямые угрозы. После каждого варианта спроси себя, какой будет самый сильный ответ соперника."
+        )
+        AlertDialog(
+            onDismissRequest = onHintDialogClose,
+            title = { Text("♞ Подсказки") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Здесь нет готового хода — только наводящие вопросы, чтобы ты сам нашёл решение.")
+                    if (hintLevel > 0) Text(hints[hintLevel - 1], fontWeight = FontWeight.Medium)
+                    Text("Открыто подсказок: $hintLevel из 3", style = MaterialTheme.typography.labelSmall)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { if (hintLevel < hints.size) onHintLevelChange(hintLevel + 1) else onHintDialogClose() }) {
+                    Text(if (hintLevel < hints.size) "Следующая подсказка" else "Готово")
+                }
+            },
+            dismissButton = { TextButton(onClick = onHintDialogClose) { Text("Закрыть") } }
+        )
+    }
     if (game == null || positions.isEmpty()) {
         LazyColumn(
             modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),
@@ -297,8 +333,8 @@ private fun ReviewScreen(
             }
             Text("Позиция ${safePly} / ${positions.lastIndex}", style = MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onBestMoves, enabled = !isAnalyzing, modifier = Modifier.weight(1f)) {
-                    Text("Лучшие ходы")
+                Button(onClick = onHints, enabled = !isAnalyzing, modifier = Modifier.weight(1f)) {
+                    Text("♞ Подсказки")
                 }
                 OutlinedButton(onClick = onReviewGame, enabled = !isAnalyzing, modifier = Modifier.weight(1f)) {
                     Text("Проверить партию")
