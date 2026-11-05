@@ -15,7 +15,9 @@ object PgnParser {
 
     fun parse(source: String): PgnGame {
         val tags = tagRegex.findAll(source).associate { it.groupValues[1] to it.groupValues[2] }
-        var body = source.replace(Regex("""(?m)^\s*\[[^\]]*]\s*$"""), " ")
+        var body = source.lineSequence()
+            .filterNot { line -> line.trim().startsWith("[") && line.trim().endsWith("]") }
+            .joinToString("\n")
         body = body.replace(Regex("""\{[^}]*}"""), " ")
         body = body.replace(Regex(""";[^\r\n]*"""), " ")
         repeat(20) {
