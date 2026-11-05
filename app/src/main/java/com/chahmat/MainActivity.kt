@@ -344,35 +344,26 @@ private fun ReviewScreen(
         item {
             Text(game.event, style = MaterialTheme.typography.headlineSmall)
             Text("${game.white} — ${game.black} · ${game.result}", style = MaterialTheme.typography.bodyMedium)
-            ChessBoard(position.fen)
-            if (comparison != null) {
-                Card {
-                    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("♞ Как ты сыграл → как лучше", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            if (comparisonPhase == 2) "Лучший ход Stockfish: ${comparison.review.bestSan}"
-                            else "Лучший ход Stockfish: ${comparison.review.bestSan}",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        AnimatedChessBoard(
-                            fromFen = comparison.before.fen,
-                            toFen = if (comparisonPhase == 2) comparison.best.fen else comparison.actual.fen,
-                            uci = if (comparisonPhase == 2) comparison.best.playedUci else comparison.actual.playedUci,
-                            animationKey = comparisonPhase
-                        )
-                        Text(
-                            if (comparisonPhase != 2) "Так партия пошла на самом деле."
-                            else "Так можно было сыграть вместо этого хода.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Button(onClick = onPlayComparison, modifier = Modifier.fillMaxWidth()) {
-                            Text("▶ Сравнить автоматически")
-                        }
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = { onComparisonPhaseChange(1) }, modifier = Modifier.weight(1f)) { Text("Как было") }
-                            Button(onClick = { onComparisonPhaseChange(2) }, modifier = Modifier.weight(1f)) { Text("Как лучше") }
-                        }
-                    }
+            if (comparison == null) {
+                ChessBoard(position.fen)
+            } else {
+                Text("Сравнение ходов · ${comparison.review.moveNumber}. ${comparison.review.side}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Button(onClick = onPlayComparison, modifier = Modifier.fillMaxWidth()) {
+                    Text("▶ Авто: показать оба варианта")
+                }
+                AnimatedChessBoard(
+                    fromFen = comparison.before.fen,
+                    toFen = if (comparisonPhase == 2) comparison.best.fen else comparison.actual.fen,
+                    uci = if (comparisonPhase == 2) comparison.best.playedUci else comparison.actual.playedUci,
+                    animationKey = comparisonPhase
+                )
+                Text(
+                    if (comparisonPhase == 2) "Лучший ход: ${comparison.review.bestSan}" else "Сыграно в партии: ${comparison.review.playedSan}",
+                    fontWeight = FontWeight.SemiBold
+                )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = { onComparisonPhaseChange(1) }, modifier = Modifier.weight(1f)) { Text("Как было") }
+                    Button(onClick = { onComparisonPhaseChange(2) }, modifier = Modifier.weight(1f)) { Text("Лучший ход") }
                 }
             }
             Text(moveLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
