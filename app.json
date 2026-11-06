@@ -1,0 +1,12 @@
+{
+  "expo":{
+    "name":"Chess Academy",
+    "slug":"chess-academy-mobile",
+    "version":"2.0.0",
+    "orientation":"portrait",
+    "userInterfaceStyle":"dark",
+    "splash":{"backgroundColor":"#0B1711"},
+    "ios":{"supportsTablet":true,"bundleIdentifier":"com.example.chessacademy"},
+    "android":{"package":"com.example.chessacademy","adaptiveIcon":{"backgroundColor":"#0B1711"}}
+  }
+}
